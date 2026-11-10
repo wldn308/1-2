@@ -1,0 +1,57 @@
+{
+    "quizzes": [
+        {
+            "question": "Python에서 문자열을 나타내는 자료형은 무엇인가요?",
+            "choices": [
+                "int",
+                "str",
+                "bool",
+                "list"
+            ],
+            "answer": 2
+        },
+        {
+            "question": "조건에 따라 다른 코드를 실행할 때 사용하는 문법은 무엇인가요?",
+            "choices": [
+                "for",
+                "if",
+                "def",
+                "class"
+            ],
+            "answer": 2
+        },
+        {
+            "question": "여러 값을 순서대로 저장할 수 있는 자료형은 무엇인가요?",
+            "choices": [
+                "list",
+                "bool",
+                "int",
+                "None"
+            ],
+            "answer": 1
+        },
+        {
+            "question": "함수를 정의할 때 사용하는 키워드는 무엇인가요?",
+            "choices": [
+                "function",
+                "def",
+                "make",
+                "return"
+            ],
+            "answer": 2
+        },
+        {
+            "question": "클래스 내부에서 객체 자신을 가리킬 때 주로 사용하는 이름은 무엇인가요?",
+            "choices": [
+                "this",
+                "me",
+                "self",
+                "object"
+            ],
+            "answer": 3
+        }
+    ],
+    "best_score": 5,
+    "best_total": 5,
+    "played_count": 1
+}
