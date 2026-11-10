@@ -1,4 +1,6 @@
 import json
+import random
+from datetime import datetime
 from json import JSONDecodeError
 from pathlib import Path
 
@@ -9,79 +11,62 @@ STATE_FILE = Path(__file__).resolve().parent / "state.json"
 
 
 class InputCancelled(Exception):
-    """
-    Ctrl+C 또는 EOF 입력이 발생했을 때 안전하게 종료하기 위한 예외
-    """
     pass
 
 
 class QuizGame:
-    """
-    퀴즈 게임 전체를 관리하는 클래스
-    """
-
     def __init__(self):
         self.quizzes = []
         self.best_score = 0
         self.best_total = 0
         self.played_count = 0
+        self.history = []
         self.running = True
-
         self.load_state()
 
     def get_default_quizzes(self):
-        """
-        기본 퀴즈 데이터
-        주제: Python 기초
-        """
         return [
             Quiz(
                 "Python에서 문자열을 나타내는 자료형은 무엇인가요?",
                 ["int", "str", "bool", "list"],
-                2
+                2,
+                "문자 데이터를 저장할 때 사용하는 자료형입니다."
             ),
             Quiz(
                 "조건에 따라 다른 코드를 실행할 때 사용하는 문법은 무엇인가요?",
                 ["for", "if", "def", "class"],
-                2
+                2,
+                "'만약 ~라면'이라는 조건을 표현할 때 사용합니다."
             ),
             Quiz(
                 "여러 값을 순서대로 저장할 수 있는 자료형은 무엇인가요?",
                 ["list", "bool", "int", "None"],
-                1
+                1,
+                "대괄호 []를 사용해서 만들 수 있습니다."
             ),
             Quiz(
                 "함수를 정의할 때 사용하는 키워드는 무엇인가요?",
                 ["function", "def", "make", "return"],
-                2
+                2,
+                "define의 줄임말처럼 생긴 키워드입니다."
             ),
             Quiz(
                 "클래스 내부에서 객체 자신을 가리킬 때 주로 사용하는 이름은 무엇인가요?",
                 ["this", "me", "self", "object"],
-                3
+                3,
+                "파이썬 클래스 메서드의 첫 번째 매개변수로 자주 사용됩니다."
             )
         ]
 
     def get_score_percent(self, score, total):
-        """
-        맞힌 개수와 전체 문제 수를 이용해 100점 만점 점수를 계산한다.
-        """
         if total == 0:
             return 0
-
         return round((score / total) * 100)
 
     def load_state(self):
-        """
-        state.json에서 데이터를 불러온다.
-        파일이 없거나 손상된 경우 기본 데이터로 복구한다.
-        """
         if not STATE_FILE.exists():
             print("🗂️ 저장 파일이 없어 기본 문제 세트로 시작합니다.")
             self.quizzes = self.get_default_quizzes()
-            self.best_score = 0
-            self.best_total = 0
-            self.played_count = 0
             self.save_state()
             return
 
@@ -102,9 +87,10 @@ class QuizGame:
                 loaded_quizzes = self.get_default_quizzes()
 
             self.quizzes = loaded_quizzes
-            self.best_score = int(data.get("best_score", 0))
+            self.best_score = float(data.get("best_score", 0))
             self.best_total = int(data.get("best_total", 0))
             self.played_count = int(data.get("played_count", 0))
+            self.history = list(data.get("history", []))
 
             best_percent = self.get_score_percent(self.best_score, self.best_total)
 
@@ -112,6 +98,7 @@ class QuizGame:
             print("🔄 이전 진행 기록을 불러왔습니다.")
             print(f"   저장된 문제 : {len(self.quizzes)}개")
             print(f"   최고 기록   : {best_percent}점")
+            print(f"   전체 기록   : {len(self.history)}개")
             print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
         except JSONDecodeError:
@@ -120,98 +107,88 @@ class QuizGame:
             self.best_score = 0
             self.best_total = 0
             self.played_count = 0
+            self.history = []
             self.save_state()
 
         except OSError:
-            print("🚧 저장 파일을 읽는 중 문제가 발생했습니다. 기본 문제 세트로 시작합니다.")
+            print("🚧 저장 파일을 읽는 중 문제가 발생했습니다.")
             self.quizzes = self.get_default_quizzes()
-            self.best_score = 0
-            self.best_total = 0
-            self.played_count = 0
 
     def save_state(self):
-        """
-        현재 퀴즈 목록과 점수 기록을 state.json에 저장한다.
-        """
         data = {
             "quizzes": [quiz.to_dict() for quiz in self.quizzes],
             "best_score": self.best_score,
             "best_total": self.best_total,
-            "played_count": self.played_count
+            "played_count": self.played_count,
+            "history": self.history
         }
 
         try:
             with open(STATE_FILE, "w", encoding="utf-8") as file:
                 json.dump(data, file, ensure_ascii=False, indent=4)
-
         except OSError:
             print("🚧 데이터 저장 중 오류가 발생했습니다.")
 
     def input_text(self, message):
-        """
-        문자열 입력 처리
-        - 앞뒤 공백 제거
-        - 빈 입력 처리
-        - Ctrl+C, EOFError 처리
-        """
         while True:
             try:
                 value = input(message).strip()
 
                 if value == "":
-                    print("🚧 빈 입력은 사용할 수 없습니다. 다시 입력해주세요.")
+                    print("🚧 빈 입력은 사용할 수 없습니다.")
                     continue
 
                 return value
 
             except KeyboardInterrupt:
-                print("\n🚧 입력이 중단되었습니다. 데이터를 저장하고 종료합니다.")
+                print("\n🚧 입력이 중단되었습니다.")
                 raise InputCancelled
 
             except EOFError:
-                print("\n🚧 입력 스트림이 종료되었습니다. 데이터를 저장하고 종료합니다.")
+                print("\n🚧 입력 스트림이 종료되었습니다.")
                 raise InputCancelled
 
     def input_int(self, message, min_value, max_value):
-        """
-        숫자 입력 처리
-        - 숫자가 아닌 입력 처리
-        - 범위 밖 숫자 처리
-        """
         while True:
             raw_value = self.input_text(message)
 
             try:
                 number = int(raw_value)
             except ValueError:
-                print(f"🚧 입력 오류: {min_value}부터 {max_value} 사이의 숫자를 입력해주세요.")
+                print(f"🚧 {min_value}부터 {max_value} 사이의 숫자를 입력해주세요.")
                 continue
 
             if number < min_value or number > max_value:
-                print(f"🚧 입력 오류: {min_value}부터 {max_value} 사이의 숫자를 입력해주세요.")
+                print(f"🚧 {min_value}부터 {max_value} 사이의 숫자를 입력해주세요.")
                 continue
 
             return number
 
+    def input_yes_no(self, message):
+        while True:
+            answer = self.input_text(message).lower()
+
+            if answer in ["y", "yes"]:
+                return True
+
+            if answer in ["n", "no"]:
+                return False
+
+            print("🚧 y 또는 n으로 입력해주세요.")
+
     def show_menu(self):
-        """
-        메인 메뉴를 출력한다.
-        """
         print()
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         print("        ✨ Python Quest Lab ✨")
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         print("  1) 퀴즈 도전")
         print("  2) 새 문제 등록")
-        print("  3) 문제 보관함")
+        print("  3) 문제 보관함 / 삭제")
         print("  4) 기록 확인")
         print("  5) 게임 종료")
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
     def run(self):
-        """
-        게임 실행 메서드
-        """
         while self.running:
             try:
                 self.show_menu()
@@ -224,7 +201,7 @@ class QuizGame:
                 elif choice == 3:
                     self.show_quiz_list()
                 elif choice == 4:
-                    self.show_best_score()
+                    self.show_records()
                 elif choice == 5:
                     self.exit_game()
 
@@ -235,23 +212,33 @@ class QuizGame:
         print("✅ 프로그램을 안전하게 종료했습니다.")
 
     def play_quiz(self):
-        """
-        저장된 퀴즈를 출제하고 점수를 계산한다.
-        """
         if not self.quizzes:
             print("\n🚧 아직 등록된 문제가 없습니다.")
             return
 
-        score = 0
-        total = len(self.quizzes)
+        total_available = len(self.quizzes)
 
         print()
         print("╔══════════════════════════════════════╗")
         print("        🚀 퀴즈 도전을 시작합니다")
         print("╚══════════════════════════════════════╝")
-        print(f"총 {total}개의 문제가 준비되어 있습니다.")
+        print(f"총 {total_available}개의 문제가 준비되어 있습니다.")
 
-        for index, quiz in enumerate(self.quizzes, start=1):
+        question_count = self.input_int(
+            f"몇 문제를 풀까요? (1-{total_available}) > ",
+            1,
+            total_available
+        )
+
+        selected_quizzes = random.sample(self.quizzes, question_count)
+
+        score = 0
+        correct_count = 0
+        hint_count = 0
+
+        for index, quiz in enumerate(selected_quizzes, start=1):
+            hint_used = False
+
             print()
             print("────────────────────────────────────────")
             print(f"Q{index}. {quiz.question}")
@@ -260,43 +247,76 @@ class QuizGame:
             for choice_index, choice in enumerate(quiz.choices, start=1):
                 print(f"   {choice_index}) {choice}")
 
-            print()
-            user_answer = self.input_int("정답 번호 선택 > ", 1, 4)
+            print("   5) 힌트 보기")
+
+            while True:
+                user_answer = self.input_int("정답 번호 선택 또는 힌트 보기 > ", 1, 5)
+
+                if user_answer == 5:
+                    if hint_used:
+                        print("🚧 이미 힌트를 사용했습니다.")
+                    else:
+                        print(f"💡 힌트: {quiz.hint}")
+                        print("   힌트를 사용했으므로 맞히면 0.5점만 획득합니다.")
+                        hint_used = True
+                        hint_count += 1
+                    continue
+
+                break
 
             if quiz.check_answer(user_answer):
                 print("🟢 맞았습니다!")
-                score += 1
+                correct_count += 1
+
+                if hint_used:
+                    score += 0.5
+                else:
+                    score += 1
             else:
                 print(f"🔴 아쉽습니다. 정답은 {quiz.answer}번입니다.")
 
-        percent = self.get_score_percent(score, total)
+        percent = self.get_score_percent(score, question_count)
 
         print()
         print("╔══════════════════════════════════════╗")
         print("              🎯 도전 결과")
         print("╠══════════════════════════════════════╣")
-        print(f"   정답 수    : {score} / {total}")
-        print(f"   환산 점수  : {percent}점")
-
+        print(f"   정답 수       : {correct_count} / {question_count}")
+        print(f"   획득 점수     : {score} / {question_count}")
+        print(f"   환산 점수     : {percent}점")
+        print(f"   힌트 사용 수  : {hint_count}회")
+        
         first_play = self.played_count == 0
         self.played_count += 1
 
-        if first_play or score > self.best_score:
+        current_best_percent = self.get_score_percent(
+            self.best_score,
+            self.best_total
+        )
+
+        if first_play or percent > current_best_percent:
             self.best_score = score
-            self.best_total = total
-            print("   기록 상태  : 새로운 최고 기록입니다!")
+            self.best_total = question_count
+            print("   기록 상태     : 새로운 최고 기록입니다!")
         else:
-            best_percent = self.get_score_percent(self.best_score, self.best_total)
-            print(f"   기록 상태  : 최고 기록은 {best_percent}점입니다.")
+            print(f"   기록 상태     : 최고 기록은 {current_best_percent}점입니다.")
 
         print("╚══════════════════════════════════════╝")
 
+        record = {
+            "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "question_count": question_count,
+            "correct_count": correct_count,
+            "score": score,
+            "total": question_count,
+            "percent": percent,
+            "hint_count": hint_count
+        }
+
+        self.history.append(record)
         self.save_state()
 
     def add_quiz(self):
-        """
-        새로운 퀴즈를 추가한다.
-        """
         print()
         print("╭──────────────────────────────────────╮")
         print("        🧩 새 문제 등록")
@@ -310,19 +330,16 @@ class QuizGame:
             choices.append(choice)
 
         answer = self.input_int("정답 번호 입력 (1-4) > ", 1, 4)
+        hint = self.input_text("힌트 입력 > ")
 
-        new_quiz = Quiz(question, choices, answer)
+        new_quiz = Quiz(question, choices, answer, hint)
         self.quizzes.append(new_quiz)
-
         self.save_state()
 
         print()
         print("✅ 새 문제가 문제 보관함에 저장되었습니다.")
 
     def show_quiz_list(self):
-        """
-        저장된 퀴즈 목록을 출력한다.
-        """
         print()
 
         if not self.quizzes:
@@ -340,32 +357,82 @@ class QuizGame:
 
         print()
         print("────────────────────────────────────────")
+        print("삭제하지 않으려면 0을 입력하세요.")
 
-    def show_best_score(self):
-        """
-        최고 점수를 출력한다.
-        """
+        delete_number = self.input_int(
+            f"삭제할 문제 번호 선택 (0-{len(self.quizzes)}) > ",
+            0,
+            len(self.quizzes)
+        )
+
+        if delete_number == 0:
+            print("✅ 문제 보관함으로 돌아갑니다.")
+            return
+
+        self.delete_quiz(delete_number)
+
+    def delete_quiz(self, quiz_number):
+        quiz_index = quiz_number - 1
+        target_quiz = self.quizzes[quiz_index]
+
+        print()
+        print("삭제할 문제:")
+        print(f"Q. {target_quiz.question}")
+
+        confirm = self.input_yes_no("정말 삭제할까요? (y/n) > ")
+
+        if not confirm:
+            print("✅ 삭제를 취소했습니다.")
+            return
+
+        removed_quiz = self.quizzes.pop(quiz_index)
+        self.save_state()
+
+        print()
+        print(f"🗑️ 삭제 완료: {removed_quiz.question}")
+
+    def show_records(self):
         print()
 
         if self.played_count == 0:
             print("📊 아직 퀴즈 도전 기록이 없습니다.")
             return
 
-        percent = self.get_score_percent(self.best_score, self.best_total)
+        best_percent = self.get_score_percent(
+            self.best_score,
+            self.best_total
+        )
 
         print("╭──────────────────────────────────────╮")
-        print("        📊 나의 최고 기록")
+        print("        📊 나의 기록")
         print("╰──────────────────────────────────────╯")
-        print(f"최고 점수   : {percent}점")
-        print(f"정답 개수   : {self.best_score} / {self.best_total}")
+        print(f"최고 점수   : {best_percent}점")
+        print(f"최고 기록   : {self.best_score} / {self.best_total}")
         print(f"도전 횟수   : {self.played_count}회")
         print("────────────────────────────────────────")
 
-    def exit_game(self):
-        """
-        게임 종료 전 데이터를 저장한다.
-        """
         print()
-        print("👋 Python Quest Lab을 종료합니다.")
+        print("최근 기록")
+        print("────────────────────────────────────────")
+
+        recent_history = self.history[-10:]
+
+        for index, record in enumerate(recent_history, start=1):
+            print(f"{index}. 날짜       : {record.get('datetime', '알 수 없음')}")
+            print(f"   문제 수    : {record.get('question_count', 0)}개")
+            print(f"   정답 수    : {record.get('correct_count', 0)}개")
+            print(f"   획득 점수  : {record.get('score', 0)} / {record.get('total', 0)}")
+            print(f"   환산 점수  : {record.get('percent', 0)}점")
+            print(f"   힌트 사용  : {record.get('hint_count', 0)}회")
+            print("────────────────────────────────────────")
+
+    def exit_game(self):
         self.save_state()
         self.running = False
+        print()
+        print("👋 게임을 종료합니다. 다음에 또 도전해보세요!")
+
+
+if __name__ == "__main__":
+    game = QuizGame()
+    game.run()

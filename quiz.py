@@ -4,9 +4,10 @@ class Quiz:
     - question: 문제
     - choices: 선택지 4개
     - answer: 정답 번호, 1~4
+    - hint: 힌트
     """
 
-    def __init__(self, question, choices, answer):
+    def __init__(self, question, choices, answer, hint="등록된 힌트가 없습니다."):
         if not question:
             raise ValueError("문제는 비어 있을 수 없습니다.")
 
@@ -19,6 +20,7 @@ class Quiz:
         self.question = question
         self.choices = choices
         self.answer = answer
+        self.hint = hint
 
     def display(self, number=None):
         """
@@ -45,16 +47,19 @@ class Quiz:
         return {
             "question": self.question,
             "choices": self.choices,
-            "answer": self.answer
+            "answer": self.answer,
+            "hint": self.hint
         }
 
     @classmethod
     def from_dict(cls, data):
         """
-        dict 데이터를 Quiz 객체로 변환
+        dict 데이터를 Quiz 객체로 변환한다.
+        기존 state.json에 hint가 없어도 불러올 수 있도록 처리한다.
         """
         question = str(data["question"])
         choices = list(data["choices"])
         answer = int(data["answer"])
+        hint = str(data.get("hint", "등록된 힌트가 없습니다."))
 
-        return cls(question, choices, answer)
+        return cls(question, choices, answer, hint)
