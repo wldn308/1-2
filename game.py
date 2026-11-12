@@ -8,6 +8,8 @@ from quiz import Quiz
 
 
 STATE_FILE = Path(__file__).resolve().parent / "state.json"
+BACKUP_FILE = STATE_FILE.with_name("state.json.bak")
+TEMP_FILE = STATE_FILE.with_name("state.json.tmp")
 
 
 class InputCancelled(Exception):
@@ -122,6 +124,7 @@ class QuizGame:
         except (JSONDecodeError, ValueError, TypeError, AttributeError):
             # JSON 문법 오류, UTF-8이 아닌 파일, 잘못된 값/구조를 모두 손상으로 처리
             print("🚧 저장 파일이 손상되어 기본 문제 세트로 복구합니다.")
+            self.backup_broken_state()
             self.quizzes = self.get_default_quizzes()
             self.best_score = 0
             self.best_total = 0
@@ -133,6 +136,17 @@ class QuizGame:
             print("🚧 저장 파일을 읽는 중 문제가 발생했습니다.")
             self.quizzes = self.get_default_quizzes()
 
+    def backup_broken_state(self):
+        """
+        손상된 저장 파일을 기본 데이터로 덮어쓰기 전에
+        원본을 state.json.bak으로 복사해 둔다.
+        """
+        try:
+            BACKUP_FILE.write_bytes(STATE_FILE.read_bytes())
+            print(f"💾 손상된 원본 파일을 {BACKUP_FILE.name}(으)로 백업했습니다.")
+        except OSError:
+            print("🚧 손상된 원본 파일을 백업하지 못했습니다.")
+
     def save_state(self):
         data = {
             "quizzes": [quiz.to_dict() for quiz in self.quizzes],
@@ -143,10 +157,14 @@ class QuizGame:
         }
 
         try:
-            with open(STATE_FILE, "w", encoding="utf-8") as file:
+            # 임시 파일에 먼저 끝까지 저장한 뒤, 성공하면 state.json과 교체한다.
+            # 저장 도중 문제가 생겨도 기존 state.json은 망가지지 않는다.
+            with open(TEMP_FILE, "w", encoding="utf-8") as file:
                 json.dump(data, file, ensure_ascii=False, indent=4)
+
+            TEMP_FILE.replace(STATE_FILE)
         except OSError:
-            print("🚧 데이터 저장 중 오류가 발생했습니다.")
+            print("🚧 데이터 저장 중 오류가 발생했습니다. 기존 저장 파일은 그대로 유지됩니다.")
 
     def input_text(self, message):
         while True:
