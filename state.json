@@ -78,36 +78,8 @@
             "hint": "조건문의 결과처럼 참과 거짓을 표현할 때 사용하는 자료형입니다."
         }
     ],
-    "best_score": 5.0,
-    "best_total": 5,
-    "played_count": 4,
-    "history": [
-        {
-            "datetime": "2026-11-10 17:25:16",
-            "question_count": 5,
-            "correct_count": 3,
-            "score": 2.5,
-            "total": 5,
-            "percent": 50,
-            "hint_count": 1
-        },
-        {
-            "datetime": "2026-11-10 17:28:52",
-            "question_count": 5,
-            "correct_count": 5,
-            "score": 2.5,
-            "total": 5,
-            "percent": 50,
-            "hint_count": 5
-        },
-        {
-            "datetime": "2026-11-10 17:45:23",
-            "question_count": 2,
-            "correct_count": 2,
-            "score": 2,
-            "total": 2,
-            "percent": 100,
-            "hint_count": 0
-        }
-    ]
+    "best_score": 0,
+    "best_total": 0,
+    "played_count": 0,
+    "history": []
 }

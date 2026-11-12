@@ -30,31 +30,43 @@ class QuizGame:
                 "Python에서 문자열을 나타내는 자료형은 무엇인가요?",
                 ["int", "str", "bool", "list"],
                 2,
-                "문자 데이터를 저장할 때 사용하는 자료형입니다."
+                "문자열은 문자나 문장을 저장하는 자료형입니다. 보통 따옴표로 감싸서 표현합니다."
             ),
             Quiz(
                 "조건에 따라 다른 코드를 실행할 때 사용하는 문법은 무엇인가요?",
                 ["for", "if", "def", "class"],
                 2,
-                "'만약 ~라면'이라는 조건을 표현할 때 사용합니다."
+                "조건이 참일 때 특정 코드를 실행하게 만드는 문법입니다."
             ),
             Quiz(
                 "여러 값을 순서대로 저장할 수 있는 자료형은 무엇인가요?",
                 ["list", "bool", "int", "None"],
                 1,
-                "대괄호 []를 사용해서 만들 수 있습니다."
+                "대괄호 []를 사용하며, 여러 값을 순서대로 저장할 수 있습니다."
             ),
             Quiz(
                 "함수를 정의할 때 사용하는 키워드는 무엇인가요?",
                 ["function", "def", "make", "return"],
                 2,
-                "define의 줄임말처럼 생긴 키워드입니다."
+                "함수를 만들 때 사용하는 키워드이며, define의 줄임말처럼 보입니다."
             ),
             Quiz(
                 "클래스 내부에서 객체 자신을 가리킬 때 주로 사용하는 이름은 무엇인가요?",
                 ["this", "me", "self", "object"],
                 3,
-                "파이썬 클래스 메서드의 첫 번째 매개변수로 자주 사용됩니다."
+                "파이썬 클래스의 메서드에서 첫 번째 매개변수로 자주 사용되며, 객체 자기 자신을 의미합니다."
+            ),
+            Quiz(
+                "Python에서 반복문을 만들 때 사용하는 키워드는 무엇인가요?",
+                ["repeat", "loop", "for", "again"],
+                3,
+                "리스트나 문자열처럼 여러 값을 하나씩 꺼내서 처리할 때 자주 사용하는 키워드입니다."
+            ),
+            Quiz(
+                "Python에서 참(True) 또는 거짓(False)을 나타내는 자료형은 무엇인가요?",
+                ["str", "bool", "int", "list"],
+                2,
+                "조건문의 결과처럼 참과 거짓을 표현할 때 사용하는 자료형입니다."
             )
         ]
 
@@ -74,6 +86,9 @@ class QuizGame:
             with open(STATE_FILE, "r", encoding="utf-8") as file:
                 data = json.load(file)
 
+            if not isinstance(data, dict):
+                raise ValueError("저장 파일의 최상위 구조가 올바르지 않습니다.")
+
             loaded_quizzes = []
 
             for quiz_data in data.get("quizzes", []):
@@ -90,7 +105,10 @@ class QuizGame:
             self.best_score = float(data.get("best_score", 0))
             self.best_total = int(data.get("best_total", 0))
             self.played_count = int(data.get("played_count", 0))
-            self.history = list(data.get("history", []))
+            self.history = [
+                record for record in data.get("history", [])
+                if isinstance(record, dict)
+            ]
 
             best_percent = self.get_score_percent(self.best_score, self.best_total)
 
@@ -101,7 +119,8 @@ class QuizGame:
             print(f"   전체 기록   : {len(self.history)}개")
             print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-        except JSONDecodeError:
+        except (JSONDecodeError, ValueError, TypeError, AttributeError):
+            # JSON 문법 오류, UTF-8이 아닌 파일, 잘못된 값/구조를 모두 손상으로 처리
             print("🚧 저장 파일이 손상되어 기본 문제 세트로 복구합니다.")
             self.quizzes = self.get_default_quizzes()
             self.best_score = 0
@@ -183,7 +202,7 @@ class QuizGame:
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         print("  1) 퀴즈 도전")
         print("  2) 새 문제 등록")
-        print("  3) 문제 보관함 / 삭제")
+        print("  3) 문제 보관함 (힌트 수정 / 삭제)")
         print("  4) 기록 확인")
         print("  5) 게임 종료")
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
@@ -239,14 +258,7 @@ class QuizGame:
         for index, quiz in enumerate(selected_quizzes, start=1):
             hint_used = False
 
-            print()
-            print("────────────────────────────────────────")
-            print(f"Q{index}. {quiz.question}")
-            print("────────────────────────────────────────")
-
-            for choice_index, choice in enumerate(quiz.choices, start=1):
-                print(f"   {choice_index}) {choice}")
-
+            quiz.display(index)
             print("   5) 힌트 보기")
 
             while True:
@@ -354,22 +366,50 @@ class QuizGame:
 
         for index, quiz in enumerate(self.quizzes, start=1):
             print(f"{index:>2}. {quiz.question}")
+            print(f"    💡 힌트: {quiz.hint}")
 
         print()
         print("────────────────────────────────────────")
-        print("삭제하지 않으려면 0을 입력하세요.")
+        print("  1) 힌트 등록 / 수정")
+        print("  2) 문제 삭제")
+        print("  0) 메인 메뉴로 돌아가기")
+        print("────────────────────────────────────────")
 
-        delete_number = self.input_int(
-            f"삭제할 문제 번호 선택 (0-{len(self.quizzes)}) > ",
+        action = self.input_int("👉 번호 입력 > ", 0, 2)
+
+        if action == 0:
+            print("✅ 메인 메뉴로 돌아갑니다.")
+            return
+
+        quiz_number = self.input_int(
+            f"대상 문제 번호 선택 (취소: 0, 1-{len(self.quizzes)}) > ",
             0,
             len(self.quizzes)
         )
 
-        if delete_number == 0:
-            print("✅ 문제 보관함으로 돌아갑니다.")
+        if quiz_number == 0:
+            print("✅ 선택을 취소했습니다.")
             return
 
-        self.delete_quiz(delete_number)
+        if action == 1:
+            self.edit_hint(quiz_number)
+        else:
+            self.delete_quiz(quiz_number)
+
+    def edit_hint(self, quiz_number):
+        target_quiz = self.quizzes[quiz_number - 1]
+
+        print()
+        print("힌트를 수정할 문제:")
+        print(f"Q. {target_quiz.question}")
+        print(f"현재 힌트: {target_quiz.hint}")
+
+        new_hint = self.input_text("새 힌트 입력 > ")
+        target_quiz.update_hint(new_hint)
+        self.save_state()
+
+        print()
+        print("✅ 힌트가 저장되었습니다.")
 
     def delete_quiz(self, quiz_number):
         quiz_index = quiz_number - 1

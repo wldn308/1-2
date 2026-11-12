@@ -26,13 +26,27 @@ class Quiz:
         """
         퀴즈를 화면에 출력하는 메서드
         """
+        print()
+        print("────────────────────────────────────────")
+
         if number is not None:
-            print(f"\n[{number}] {self.question}")
+            print(f"Q{number}. {self.question}")
         else:
-            print(f"\n{self.question}")
+            print(f"Q. {self.question}")
+
+        print("────────────────────────────────────────")
 
         for index, choice in enumerate(self.choices, start=1):
-            print(f"{index}. {choice}")
+            print(f"   {index}) {choice}")
+
+    def update_hint(self, new_hint):
+        """
+        힌트를 새 내용으로 수정하는 메서드
+        """
+        if not new_hint:
+            raise ValueError("힌트는 비어 있을 수 없습니다.")
+
+        self.hint = new_hint
 
     def check_answer(self, user_answer):
         """
