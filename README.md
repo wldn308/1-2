@@ -764,14 +764,16 @@ Q. 여러 값을 순서대로 저장할 수 있는 자료형은 무엇인가요?
 ```text
 $ git log --oneline --graph --all
 * 25d1752 (HEAD -> main) Chore: 대량 퀴즈 성능 측정 스크립트 추가
-* 28d5cfc Fix: 손상된 저장 파일 자동 백업과 안전한 저장 방식 적용
+* 28d5cfc Fix: 손상된 저장 파일 자동 백업과 안전한 저
+장 방식 적용
 * a1dc51a (origin/main, origin/HEAD) Docs: README에 Git 실습 기록과 커밋 그래프 추가
 * b9aef10 Docs: clone 실습으로 README에 Git 실습 기록 추가
 *   ae3b4e9 Merge: 틀린 문제 다시 보기 기능 병합
 |\  
 | * c6c38f0 (feature/wrong-answer-review) Docs: 변경된 화면 스크린샷과 플레이 기록 갱신
 | * 081d0a2 Docs: README 기능 목록에 틀린 문제 다시 보기 추가
-| * 38786ba Feat: 퀴즈 종료 후 틀린 문제 다시 보기 기능 추가
+| * 38786ba Feat: 퀴즈 종료 후 틀린 문제 다시 보기 기
+능 추가
 |/  
 * 0b2e6c3 전체 파일 수정
 * 9286303 Add screenshots
@@ -874,7 +876,69 @@ n은 전체 퀴즈 수, k는 한 번에 푸는 문제 수입니다.
 
 ---
 
-## 15. 마무리
+## 15. 설계 설명
+
+### 15-1. 클래스로 나눈 이유
+
+**`Quiz` 클래스**
+
+- 추상화: 문제, 선택지, 정답, 힌트와 정답 확인 동작을 "문제 하나"라는 개념으로 묶었습니다. 그래서 게임 쪽 코드는 문제 내부가 어떻게 생겼는지 몰라도 `quiz.check_answer(번호)`처럼 간단히 사용할 수 있습니다.
+- 재사용성: 같은 클래스 하나로 기본 문제, 사용자가 추가한 문제, `state.json`에서 불러온 문제를 모두 만듭니다. 성능 측정 스크립트(`benchmark.py`)에서도 이 클래스를 그대로 다시 사용했습니다.
+
+**`QuizGame` 클래스**
+
+- 추상화: 메뉴, 퀴즈 진행, 점수 계산, 저장 같은 게임 전체의 규칙을 한곳에 모았습니다. 그래서 `main.py`는 `QuizGame()`을 만들고 `run()`을 호출하는 것만으로 게임을 실행할 수 있습니다.
+- 재사용성: 문제 목록, 최고 점수, 기록을 객체의 속성으로 묶어 두어서, 여러 메서드가 같은 데이터를 매개변수로 주고받지 않고 함께 사용할 수 있습니다.
+
+**메서드별 역할**
+
+| 역할 | 클래스 | 메서드 |
+|---|---|---|
+| 문제 하나의 표현과 동작 | `Quiz` | `display`, `check_answer`, `update_hint`, `to_dict`, `from_dict` |
+| 입력 처리 | `QuizGame` | `input_text`, `input_int`, `input_yes_no` |
+| 게임 진행 | `QuizGame` | `run`, `show_menu`, `play_quiz`, `show_wrong_answers`, `add_quiz`, `show_quiz_list`, `edit_hint`, `delete_quiz`, `show_records`, `exit_game` |
+| 점수 계산 | `QuizGame` | `get_score_percent` |
+| 데이터 저장 | `QuizGame` | `load_state`, `save_state`, `backup_broken_state`, `get_default_quizzes` |
+
+입력 처리를 한곳에 모았기 때문에 모든 메뉴가 같은 규칙(공백 제거, 숫자 확인, 범위 확인)으로 입력을 검사합니다. 저장 기능도 따로 분리되어 있어서, 저장 방식을 바꾸더라도 게임 진행 코드는 고치지 않아도 됩니다.
+
+### 15-2. JSON을 선택한 이유
+
+- 가독성: JSON은 사람이 메모장이나 VS Code로 열어도 바로 읽을 수 있는 텍스트 형식입니다. 이 프로젝트는 `ensure_ascii=False`, `indent=4` 옵션으로 저장해서 한글과 들여쓰기가 그대로 보이고, 저장된 문제와 기록을 직접 확인하거나 손상된 파일을 고치기 쉽습니다.
+- 구조화: JSON은 키와 값(dict), 목록(list)으로 데이터를 계층적으로 정리할 수 있어 Python의 dict, list와 그대로 대응됩니다. 그래서 문제 목록, 최고 점수, 플레이 기록처럼 성격이 다른 데이터를 한 파일 안에 구분해서 저장하고, 표준 라이브러리 `json`만으로 읽고 쓸 수 있습니다.
+
+### 15-3. 데이터 불러오기와 저장 순서
+
+```text
+프로그램 시작 (main.py)
+  → QuizGame 객체 생성 → __init__에서 load_state() 호출 (state.json 불러오기)
+  → run() 반복: 메뉴 출력 → 번호 입력 → 기능 실행
+       · 퀴즈를 다 풀면              → save_state()
+       · 문제 추가 / 힌트 수정 / 삭제 → save_state()
+  → 종료 (메뉴 5, Ctrl+C, 입력 종료) → save_state() → 안전하게 종료
+```
+
+데이터가 바뀌는 작업이 끝날 때마다 바로 저장하기 때문에, 프로그램이 중간에 종료되더라도 그전까지의 변경 내용은 유지됩니다.
+
+### 15-4. 요구사항이 바뀔 때 수정할 위치
+
+| 바뀌는 요구사항 | 수정할 파일 | 수정할 메서드 / 부분 |
+|---|---|---|
+| 정답 점수나 힌트 감점 규칙 변경 (예: 힌트 사용 시 0점) | `game.py` | `play_quiz`의 `score += 1`, `score += 0.5` |
+| 점수 환산 방식 변경 (예: 100점 만점 → 10점 만점) | `game.py` | `get_score_percent` |
+| 최고 기록 판정 기준 변경 (예: 환산 점수 → 정답 수) | `game.py` | `play_quiz`의 최고 기록 비교 부분 |
+| 선택지 개수 변경 (예: 4개 → 5개) | `quiz.py`, `game.py` | `Quiz.__init__`의 개수 검사, `add_quiz`의 선택지 입력 반복과 정답 범위, `play_quiz`의 힌트 보기 번호(5번) |
+| 문제에 새 정보 추가 (예: 난이도) | `quiz.py`, `game.py` | `Quiz.__init__`, `to_dict`, `from_dict`, `add_quiz` |
+| 기본 문제 변경 | `game.py` | `get_default_quizzes` |
+| 저장 파일 위치나 이름 변경 | `game.py` | 파일 맨 위의 `STATE_FILE` |
+| 저장 방식 변경 (예: JSON → 데이터베이스) | `game.py` | `load_state`, `save_state` (게임 진행 메서드는 수정하지 않음) |
+| 메뉴 추가 | `game.py` | `show_menu`, `run`의 `if/elif`와 입력 범위 |
+
+역할별로 메서드를 나눠 두었기 때문에, 대부분의 변경은 표에 적힌 한두 곳만 고치면 됩니다.
+
+---
+
+## 16. 마무리
 
 Python Quest Lab은 Python 기초 개념을 재미있게 복습할 수 있도록 만든 퀴즈 게임입니다.
 
