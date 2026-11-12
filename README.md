@@ -764,16 +764,14 @@ Q. 여러 값을 순서대로 저장할 수 있는 자료형은 무엇인가요?
 ```text
 $ git log --oneline --graph --all
 * 25d1752 (HEAD -> main) Chore: 대량 퀴즈 성능 측정 스크립트 추가
-* 28d5cfc Fix: 손상된 저장 파일 자동 백업과 안전한 저
-장 방식 적용
+* 28d5cfc Fix: 손상된 저장 파일 자동 백업과 안전한 저장 방식 적용
 * a1dc51a (origin/main, origin/HEAD) Docs: README에 Git 실습 기록과 커밋 그래프 추가
 * b9aef10 Docs: clone 실습으로 README에 Git 실습 기록 추가
 *   ae3b4e9 Merge: 틀린 문제 다시 보기 기능 병합
 |\  
 | * c6c38f0 (feature/wrong-answer-review) Docs: 변경된 화면 스크린샷과 플레이 기록 갱신
 | * 081d0a2 Docs: README 기능 목록에 틀린 문제 다시 보기 추가
-| * 38786ba Feat: 퀴즈 종료 후 틀린 문제 다시 보기 기
-능 추가
+| * 38786ba Feat: 퀴즈 종료 후 틀린 문제 다시 보기 기능 추가
 |/  
 * 0b2e6c3 전체 파일 수정
 * 9286303 Add screenshots
