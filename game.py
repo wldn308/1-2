@@ -254,6 +254,7 @@ class QuizGame:
         score = 0
         correct_count = 0
         hint_count = 0
+        wrong_answers = []
 
         for index, quiz in enumerate(selected_quizzes, start=1):
             hint_used = False
@@ -286,6 +287,7 @@ class QuizGame:
                     score += 1
             else:
                 print(f"🔴 아쉽습니다. 정답은 {quiz.answer}번입니다.")
+                wrong_answers.append((quiz, user_answer))
 
         percent = self.get_score_percent(score, question_count)
 
@@ -315,6 +317,9 @@ class QuizGame:
 
         print("╚══════════════════════════════════════╝")
 
+        if wrong_answers:
+            self.show_wrong_answers(wrong_answers)
+
         record = {
             "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "question_count": question_count,
@@ -327,6 +332,21 @@ class QuizGame:
 
         self.history.append(record)
         self.save_state()
+
+    def show_wrong_answers(self, wrong_answers):
+        """
+        퀴즈가 끝난 뒤 틀린 문제와 정답을 다시 보여준다.
+        wrong_answers: (Quiz 객체, 사용자가 고른 번호) 묶음의 리스트
+        """
+        print()
+        print("📝 틀린 문제 다시 보기")
+        print("────────────────────────────────────────")
+
+        for quiz, user_answer in wrong_answers:
+            print(f"Q. {quiz.question}")
+            print(f"   내가 고른 답 : {user_answer}) {quiz.choices[user_answer - 1]}")
+            print(f"   정답         : {quiz.answer}) {quiz.choices[quiz.answer - 1]}")
+            print("────────────────────────────────────────")
 
     def add_quiz(self):
         print()
