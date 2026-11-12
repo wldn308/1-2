@@ -194,6 +194,7 @@ python3 main.py
 ├── .gitignore
 └── screenshots/
     ├── git.png
+    ├── git_log.png
     ├── hint.png
     ├── list.png
     ├── quiz.png
@@ -570,7 +571,19 @@ README 작성 후 GitHub 저장소에 프로젝트 파일을 commit하고 push�
 
 ## 13. Git 실습 기록
 
+### 13-1. 브랜치 생성 및 병합
+
+`feature/wrong-answer-review` 브랜치를 만들어 퀴즈 종료 후 틀린 문제를 다시 보여주는 기능을 개발했습니다. 기능 구현, README 수정, 스크린샷 갱신을 각각 커밋한 뒤 `git merge --no-ff`로 main 브랜치에 병합했습니다.
+
+### 13-2. clone 및 pull 실습
+
 이 내용은 저장소를 별도 폴더에 clone한 뒤 추가하고 push했으며, 원래 작업 폴더에서 pull로 가져왔습니다.
+
+### 13-3. 커밋 기록
+
+`git log --oneline --graph --all` 실행 결과입니다. 브랜치가 갈라졌다가 main으로 병합된 흐름을 확인할 수 있습니다.
+
+![git log 그래프](screenshots/git_log.png)
 
 ---
 
